@@ -36,7 +36,7 @@ export const ShippingInvoiceModal: React.FC<ShippingInvoiceModalProps> = ({
   useEffect(() => {
     // Generate QR verification link for the invoice
     QRCode.toDataURL(
-      `meditrust://v1/invoice?inv=${invoice.invoiceNumber}&b=${invoice.batchNumber}&q=${invoice.packQuantity}`,
+      `scanrx://v1/invoice?inv=${invoice.invoiceNumber}&b=${invoice.batchNumber}&q=${invoice.packQuantity}`,
       { width: 180, margin: 1 }
     ).then(setQrDataUrl);
   }, [invoice]);

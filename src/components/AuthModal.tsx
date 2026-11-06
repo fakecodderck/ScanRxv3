@@ -19,6 +19,7 @@ import {
   syncUserProfile,
   ADMIN_EMAIL,
 } from '../lib/firebase';
+import { DEMO_PROFILES } from '../lib/demoUsers';
 import {
   signInWithPopup,
   signInWithEmailAndPassword,
@@ -40,7 +41,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   defaultMode = 'login',
   defaultRole = 'company',
 }) => {
-  const { setFirebaseUser } = useLedgerStore();
+  const { setFirebaseUser, setActiveView } = useLedgerStore();
 
   const [mode, setMode] = useState<'login' | 'signup'>(defaultMode);
   const [email, setEmail] = useState('');
@@ -92,7 +93,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       onClose();
     } catch (err: any) {
       console.error('Auth error:', err);
-      // Clean readable error
       if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
         setErrorMsg('Invalid email or password. You can also sign up or use 1-click demo login.');
       } else if (err.code === 'auth/email-already-in-use') {
@@ -112,43 +112,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setIsLoading(true);
     setErrorMsg(null);
 
-    const demoProfiles = {
-      admin: {
-        uid: 'demo-admin-uid',
-        email: ADMIN_EMAIL,
-        displayName: 'Platform Admin (Me)',
-        role: 'admin' as const,
-        organization: 'National Drug Authority & Vigilance Directorate',
-        status: 'active' as const,
-      },
-      company: {
-        uid: 'demo-company-uid',
-        email: 'qa@sunpharma.in',
-        displayName: 'Sun Pharma Manufacturing',
-        role: 'company' as const,
-        organization: 'Sun Pharma Laboratories Ltd. (Baddi Unit)',
-        status: 'active' as const,
-      },
-      distributor: {
-        uid: 'demo-dist-uid',
-        email: 'ops@coldexlogistics.in',
-        displayName: 'Coldex National Logistics',
-        role: 'distributor' as const,
-        organization: 'Coldex Logistics Hub, Bhiwandi',
-        status: 'active' as const,
-      },
-      pharmacy: {
-        uid: 'demo-phr-uid',
-        email: 'chemist@apollopharmacy.in',
-        displayName: 'Apollo Pharmacy Lead Chemist',
-        role: 'pharmacy' as const,
-        organization: 'Apollo Pharmacy #402, Bengaluru',
-        status: 'active' as const,
-      },
-    };
-
-    const chosen = demoProfiles[role];
+    const chosen = DEMO_PROFILES[role];
     setFirebaseUser(chosen);
+    if (role === 'admin') {
+      setActiveView('admin');
+    } else if (role === 'company') {
+      setActiveView('manufacturer');
+    } else if (role === 'distributor') {
+      setActiveView('distributor');
+    } else if (role === 'pharmacy') {
+      setActiveView('pharmacy');
+    }
     setIsLoading(false);
     onClose();
   };
@@ -164,7 +138,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-900 leading-tight">
-                {mode === 'login' ? 'Sign In to AushadhLedger' : 'Register New Organization'}
+                {mode === 'login' ? 'Sign In to ScanRx' : 'Register New Organization'}
               </h3>
               <p className="text-xs text-slate-500">
                 Firebase Authenticated Supply Chain Portal
@@ -355,10 +329,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <div className="grid grid-cols-2 gap-2 text-[11px]">
               <button
                 onClick={() => handleDemoSignIn('admin')}
-                className="rounded-lg border border-slate-200 bg-slate-50 p-2 hover:bg-slate-100 font-semibold text-slate-800 text-left"
+                className="rounded-lg border border-amber-300 bg-amber-50/70 p-2 hover:bg-amber-100 font-semibold text-amber-950 text-left"
               >
-                👑 Admin (Me)
-                <div className="text-[10px] text-slate-400 font-normal">All platform control</div>
+                👑 Admin ({ADMIN_EMAIL})
+                <div className="text-[10px] text-amber-800 font-normal">All companies, pharmacies & QRs</div>
               </button>
 
               <button
@@ -382,7 +356,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 className="rounded-lg border border-purple-200 bg-purple-50/50 p-2 hover:bg-purple-100/50 font-semibold text-purple-950 text-left"
               >
                 🏪 Pharmacy (Apollo)
-                <div className="text-[10px] text-slate-400 font-normal">Receive & Dispense</div>
+                <div className="text-[10px] text-slate-400 font-normal">Verify QRs & Invoices</div>
               </button>
             </div>
           </div>

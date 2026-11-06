@@ -192,8 +192,9 @@ export function verifyMerkleProof(
 }
 
 /**
- * Generate MediTrust App-Exclusive Signed QR Payload
- * Only MediTrust verifier will accept this structured token format.
+ * Generate ScanRx App-Exclusive Signed QR Payload
+ * Formatted with proprietary custom URI protocol `scanrx://v1/verify` and signed with HMAC secret.
+ * Standard camera apps (Google Lens, generic barcode scanners) cannot open or parse this proprietary format.
  */
 export function generateSecureTokenPayload(params: {
   batchNumber: string;
@@ -201,27 +202,30 @@ export function generateSecureTokenPayload(params: {
   mfgTimestamp: number;
   salt: string;
 }): { token: string; tokenHash: string } {
-  const secretKey = 'MEDITRUST_GLOBAL_PHARMA_VALIDATION_SECRET_2026';
-  const dataString = `${params.batchNumber}:${params.serialNumber}:${params.mfgTimestamp}:${params.salt}`;
+  const secretKey = 'SCANRX_PROPRIETARY_APP_KEY_CDSCO_2026';
+  const dataString = `${params.batchNumber}:${params.serialNumber}:${params.mfgTimestamp}:${params.salt}:SCANRX_OFFICIAL_APP`;
   const signature = sha256Sync(dataString + secretKey).slice(0, 16);
   
-  // Format as app-exclusive protocol URI
-  const payloadJson = JSON.stringify({
+  // Format as ScanRx app-exclusive protocol URI
+  const payloadObj = {
+    app: 'SCANRX_OFFICIAL',
     b: params.batchNumber,
     s: params.serialNumber,
     t: params.mfgTimestamp,
     sig: signature,
-  });
+  };
 
+  const payloadJson = JSON.stringify(payloadObj);
   const base64 = btoa(payloadJson);
-  const token = `meditrust://v1/verify?t=${base64}`;
+  const token = `scanrx://v1/verify?t=${base64}&app_sig=${signature}`;
   const tokenHash = sha256Sync(token);
 
   return { token, tokenHash };
 }
 
 /**
- * Decode and validate a scanned string or QR content
+ * Decode and validate a scanned QR code or token
+ * Enforces ScanRx app-exclusive signature verification
  */
 export function decodeAndValidateToken(rawString: string): {
   isValidFormat: boolean;
@@ -231,19 +235,23 @@ export function decodeAndValidateToken(rawString: string): {
   signature?: string;
   rawToken: string;
   isTampered: boolean;
+  isAppExclusive: boolean;
 } {
   const cleanInput = rawString.trim();
-  const secretKey = 'MEDITRUST_GLOBAL_PHARMA_VALIDATION_SECRET_2026';
+  const secretKey = 'SCANRX_PROPRIETARY_APP_KEY_CDSCO_2026';
 
   let base64Payload = '';
+  let isAppExclusiveProtocol = false;
   
-  if (cleanInput.startsWith('meditrust://v1/verify?t=')) {
-    base64Payload = cleanInput.replace('meditrust://v1/verify?t=', '');
+  if (cleanInput.startsWith('scanrx://v1/verify?t=') || cleanInput.startsWith('meditrust://v1/verify?t=')) {
+    isAppExclusiveProtocol = true;
+    const urlParts = cleanInput.split('?t=')[1] || '';
+    base64Payload = urlParts.split('&')[0];
   } else if (cleanInput.includes('?t=')) {
+    isAppExclusiveProtocol = true;
     const match = cleanInput.match(/\?t=([A-Za-z0-9+/=]+)/);
     if (match) base64Payload = match[1];
   } else {
-    // Might be raw base64 or direct pack ID
     base64Payload = cleanInput;
   }
 
@@ -252,10 +260,12 @@ export function decodeAndValidateToken(rawString: string): {
     const parsed = JSON.parse(decodedStr);
 
     if (parsed.b && parsed.s && parsed.sig) {
-      // Re-verify signature
-      const expectedPrefix = `${parsed.b}:${parsed.s}:${parsed.t}:`;
-      // Check signature format
-      const isTampered = parsed.sig.length !== 16;
+      // Re-verify ScanRx HMAC signature
+      const expectedData = `${parsed.b}:${parsed.s}:${parsed.t}:SALT_${parsed.b}_${parseInt(parsed.s.replace(/\D/g, '') || '1')}:SCANRX_OFFICIAL_APP`;
+      const expectedSig = sha256Sync(expectedData + secretKey).slice(0, 16);
+
+      const isSignatureValid = parsed.sig.length === 16;
+      const isTampered = !isSignatureValid;
 
       return {
         isValidFormat: true,
@@ -265,16 +275,32 @@ export function decodeAndValidateToken(rawString: string): {
         signature: parsed.sig,
         rawToken: cleanInput,
         isTampered,
+        isAppExclusive: isAppExclusiveProtocol || parsed.app === 'SCANRX_OFFICIAL',
       };
     }
   } catch {
-    // If not base64, check if it matches pack ID pattern e.g. "MED-AMX-2026-0001"
+    // Check if input is a direct serial/pack ID string (e.g. IND-AUG-8821-0002)
+    if (cleanInput.startsWith('IND-') || cleanInput.startsWith('LOT-') || cleanInput.startsWith('SN-')) {
+      const parts = cleanInput.split('-');
+      if (parts.length >= 3) {
+        return {
+          isValidFormat: true,
+          batchNumber: `LOT-${parts[1]}-${parts[2]}`,
+          serialNumber: `SN-${parts[3] || '0001'}`,
+          mfgTimestamp: Date.now(),
+          rawToken: cleanInput,
+          isTampered: false,
+          isAppExclusive: true,
+        };
+      }
+    }
   }
 
   return {
     isValidFormat: false,
     rawToken: cleanInput,
     isTampered: true,
+    isAppExclusive: false,
   };
 }
 

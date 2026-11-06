@@ -1,8 +1,50 @@
 /**
- * MediTrust Ledger Data Types & Interfaces
+ * AushadhLedger Data Types & Interfaces
+ * In strict compliance with AushadhLedger Product & Development Guide
  */
 
-export type RoleType = 'public' | 'admin' | 'company' | 'manufacturer' | 'distributor' | 'pharmacy' | 'auditor' | 'patient';
+export type RoleType =
+  | 'public'
+  | 'admin'
+  | 'company'
+  | 'manufacturer'
+  | 'super_stockist'
+  | 'distributor'
+  | 'stockist'
+  | 'pharmacy'
+  | 'auditor'
+  | 'patient';
+
+export type OrgType =
+  | 'manufacturer'
+  | 'super_stockist'
+  | 'distributor'
+  | 'stockist'
+  | 'pharmacy';
+
+export type OrgStatus =
+  | 'PENDING_REVIEW'
+  | 'MORE_INFORMATION_REQUIRED'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'SUSPENDED';
+
+export interface RegisteredOrganization {
+  id: string;
+  name: string;
+  type: OrgType;
+  status: OrgStatus;
+  contactEmail: string;
+  drugLicenseNo: string;
+  gstin: string;
+  stateJurisdiction: string;
+  address: string;
+  appliedAt: number;
+  reviewedAt?: number;
+  reviewedBy?: string;
+  reviewNotes?: string;
+  documentsSubmitted: string[];
+}
 
 export interface LocationData {
   lat: number;
@@ -32,12 +74,13 @@ export type PackStatus =
   | 'at_pharmacy'
   | 'dispensed'
   | 'compromised'
-  | 'quarantined';
+  | 'quarantined'
+  | 'blocked';
 
 export interface MedicinePack {
-  packId: string; // e.g. "MED-AMX-2026-0042"
-  batchNumber: string; // e.g. "LOT-AMX-8821"
-  serialNumber: string; // e.g. "SN-0042"
+  packId: string; // e.g. "IND-AUG-8821-0002"
+  batchNumber: string; // e.g. "LOT-AUG-8821"
+  serialNumber: string; // e.g. "SN-0002"
   secureToken: string; // Cryptographic signed token string
   tokenHash: string; // SHA-256 of the token
   merkleLeafIndex: number;
@@ -46,13 +89,25 @@ export interface MedicinePack {
   currentHolder: string;
   manufactureDate: string;
   expiryDate: string;
+  opticalSecurityPatternEnrolled: boolean;
+  opticalPatternRef?: string; // Machine-readable PUF/microdot reference
   custodyHistory: CustodyEvent[];
   lastKnownLocation?: {
     lat: number;
     lng: number;
     placeName: string;
     timestamp: number;
+    ipAddress?: string;
   };
+  scanLocations?: {
+    lat: number;
+    lng: number;
+    placeName: string;
+    timestamp: number;
+    ipAddress?: string;
+    scanCategory?: string;
+  }[];
+  publicScanCount?: number;
 }
 
 export interface MedicineBatch {
@@ -70,7 +125,7 @@ export interface MedicineBatch {
   expiryDate: string;
   totalPacks: number;
   merkleRoot: string;
-  status: 'active' | 'recalled' | 'quarantined';
+  status: 'active' | 'recalled' | 'quarantined' | 'blocked';
   temperatureSpec: {
     min: number;
     max: number;
@@ -80,7 +135,19 @@ export interface MedicineBatch {
   timestamp: number;
 }
 
+/**
+ * Result states matching Section 7.3 of the Product & Development Guide
+ */
 export type VerificationResultType = 
+  | 'VERIFIED'
+  | 'REGISTERED_BUT_NOT_FULLY_AUTHENTICATED'
+  | 'ALREADY_SCANNED'
+  | 'SUSPICIOUS'
+  | 'INVALID'
+  | 'BLOCKED'
+  | 'BATCH_RECALLED'
+  | 'AUTHENTICATION_UNAVAILABLE'
+  // Backward compatibility aliases
   | 'verified_authentic'
   | 'impossible_travel'
   | 'counterfeit_clone'
@@ -93,11 +160,17 @@ export interface ScanLog {
   packId: string;
   batchNumber: string;
   timestamp: number;
+  scanCategory: 'public' | 'pharmacy' | 'manufacturer' | 'distributor' | 'stockist' | 'admin';
   lat: number;
   lng: number;
   placeName: string;
+  ipAddress?: string;
   accuracy: number;
   result: VerificationResultType;
+  opticalAuthPerformed?: boolean;
+  opticalAuthMatched?: boolean;
+  riskScore?: number; // 0 (nominal) to 100 (critical counterfeit alert)
+  riskReason?: string;
   velocityKmH?: number;
   distanceKm?: number;
   timeDeltaSec?: number;
@@ -106,7 +179,10 @@ export interface ScanLog {
     lng: number;
     timestamp: number;
     placeName: string;
+    ipAddress?: string;
+    category?: string;
   };
+  priorPublicScanCount?: number;
   verifiedOffline: boolean;
   userAgent?: string;
 }
@@ -136,7 +212,7 @@ export interface BlockchainBlock {
   timestamp: number;
   transactions: {
     txId: string;
-    type: 'BATCH_MINT' | 'CUSTODY_TRANSFER' | 'DISPENSATION' | 'SECURITY_FLAG' | 'BATCH_RECALL';
+    type: 'BATCH_MINT' | 'CUSTODY_TRANSFER' | 'DISPENSATION' | 'SECURITY_FLAG' | 'BATCH_RECALL' | 'ORG_APPROVAL';
     payload: any;
     hash: string;
   }[];

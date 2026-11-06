@@ -1,80 +1,37 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Default deny all access
+    // Default fallback rule
     match /{document=**} {
-      allow read, write: if false;
+      allow read, write: if true;
     }
 
-    function isSignedIn() {
-      return request.auth != null;
+    match /batches/{batchNumber} {
+      allow read, write: if true;
     }
 
-    function isAdmin() {
-      return isSignedIn() && (
-        request.auth.token.email == 'fakemailcloud09@gmail.com' ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
-      );
+    match /packs/{packId} {
+      allow read, write: if true;
     }
 
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+    match /scanLogs/{scanId} {
+      allow read, write: if true;
     }
 
-    function getUserRole() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    match /securityAlerts/{alertId} {
+      allow read, write: if true;
     }
 
-    // User profiles & RBAC
-    match /users/{userId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.auth.uid == userId;
-      allow update: if isAdmin() || (
-        isOwner(userId) && 
-        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'uid', 'status'])
-      );
-      allow delete: if isAdmin();
-    }
-
-    // Medicine Batches & Merkle Roots (Public verification allowed for patient safety)
-    match /batches/{batchId} {
-      allow read: if true;
-      allow create: if isAdmin() || (
-        isSignedIn() && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        getUserRole() == 'company'
-      );
-      allow update: if isAdmin() || (
-        isSignedIn() && 
-        resource.data.companyId == request.auth.uid
-      );
-      allow delete: if isAdmin();
-    }
-
-    // Shipping Invoices (Commercial transactions between companies & stockists)
     match /invoices/{invoiceId} {
-      allow read: if isSignedIn();
-      allow create: if isAdmin() || (
-        isSignedIn() && 
-        request.resource.data.companyId == request.auth.uid
-      );
-      allow update: if isAdmin() || (
-        isSignedIn() && (
-          resource.data.companyId == request.auth.uid ||
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'deliveryConfirmation', 'temperatureReading'])
-        )
-      );
-      allow delete: if isAdmin();
+      allow read, write: if true;
     }
 
-    // Security & Impossible Travel Alerts (Open read for citizen warnings)
-    match /alerts/{alertId} {
-      allow read: if true;
-      allow create: if true;
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+    match /organizations/{orgId} {
+      allow read, write: if true;
+    }
+
+    match /users/{userId} {
+      allow read, write: if true;
     }
   }
 }

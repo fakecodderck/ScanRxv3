@@ -8,18 +8,20 @@ import {
   Truck,
   Store,
   Layers,
-  Wifi,
-  WifiOff,
-  RefreshCw,
   LogIn,
   LogOut,
-  User,
-  ExternalLink,
   X,
-  FileCheck2,
-  AlertCircle
+  Boxes,
+  PlusCircle,
+  QrCode,
+  FileText,
+  UserCheck,
+  CheckCircle2,
+  ScanLine,
+  FileSpreadsheet,
+  Building
 } from 'lucide-react';
-import { RoleType } from '../types';
+import { DEMO_PROFILES } from '../lib/demoUsers';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -31,23 +33,45 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onOpenAuth })
   const {
     activeView,
     setActiveView,
-    currentUser,
-    switchUserRole,
+    companyTab,
+    setCompanyTab,
+    pharmacyTab,
+    setPharmacyTab,
     firebaseUser,
     setFirebaseUser,
     isOfflineMode,
     toggleOfflineMode,
     offlineQueueCount,
-    syncOfflineQueue,
     securityAlerts,
     blocks,
   } = useLedgerStore();
 
   const activeAlertsCount = securityAlerts.filter((a) => !a.resolved).length;
 
-  const navigateTo = (view: typeof activeView, role?: RoleType) => {
-    if (role) switchUserRole(role);
+  const navigateTo = (view: typeof activeView) => {
     setActiveView(view);
+    onClose();
+  };
+
+  const handleCompanyNavigation = (tab: typeof companyTab) => {
+    setCompanyTab(tab);
+    onClose();
+  };
+
+  const handlePharmacyNavigation = (tab: typeof pharmacyTab) => {
+    setPharmacyTab(tab);
+    onClose();
+  };
+
+  const handleSignOut = () => {
+    setFirebaseUser(null);
+    setActiveView('public_scan');
+    onClose();
+  };
+
+  const handleQuickDemoSignIn = (role: 'company' | 'pharmacy') => {
+    const profile = DEMO_PROFILES[role];
+    setFirebaseUser(profile);
     onClose();
   };
 
@@ -68,7 +92,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onOpenAuth })
           isOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
         }`}
       >
-        {/* Brand Area */}
+        {/* Brand Header */}
         <div className="flex h-16 items-center justify-between border-b border-slate-200/90 px-5">
           <button
             onClick={() => navigateTo('public_scan')}
@@ -79,7 +103,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onOpenAuth })
             </div>
             <div>
               <div className="text-sm font-bold tracking-tight text-slate-900 leading-tight">
-                Aushadh<span className="text-emerald-700 font-semibold">Ledger</span>
+                Scan<span className="text-emerald-700 font-semibold">Rx</span>
               </div>
               <div className="text-[10px] font-medium text-slate-500 leading-none mt-0.5">
                 CDSCO Supply Traceability
@@ -98,10 +122,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onOpenAuth })
 
         {/* Navigation Content */}
         <div className="flex-1 overflow-y-auto px-3.5 py-4 space-y-6 text-xs">
-          {/* Group 1: Verification & Public Tools */}
+          {/* Group 1: Public Tools */}
           <div className="space-y-1">
             <div className="px-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Public & Consumer
+              Public Scanner
             </div>
 
             <button
@@ -118,142 +142,339 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onOpenAuth })
               </div>
               <span className="text-[10px] text-emerald-800 font-semibold">Open</span>
             </button>
+          </div>
 
-            <button
-              onClick={() => navigateTo('security_center')}
-              className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 font-medium transition-colors ${
-                activeView === 'security_center'
-                  ? 'bg-emerald-50 text-emerald-900 font-semibold'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <Activity className="h-4 w-4 text-rose-600" />
-                <span>Impossible Travel Radar</span>
-              </div>
-              {activeAlertsCount > 0 && (
-                <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-bold text-white tabular-nums">
-                  {activeAlertsCount}
-                </span>
+          {/* Group 2: Role Dashboard (ONLY shown when logged in) */}
+          {firebaseUser ? (
+            <div className="space-y-4">
+              {/* COMPANY ROLE NAVIGATION */}
+              {firebaseUser.role === 'company' && (
+                <div className="space-y-1">
+                  <div className="px-2.5 flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    <span>Company Dashboard</span>
+                    <span className="font-mono text-emerald-700">MFR</span>
+                  </div>
+
+                  <button
+                    onClick={() => handleCompanyNavigation('overview')}
+                    className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 font-medium transition-colors ${
+                      activeView === 'manufacturer' && companyTab === 'overview'
+                        ? 'bg-emerald-50 text-emerald-950 font-semibold border border-emerald-200'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <Building2 className="h-4 w-4 text-emerald-700" />
+                    <span>Company Overview</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleCompanyNavigation('batches')}
+                    className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 font-medium transition-colors ${
+                      activeView === 'manufacturer' && companyTab === 'batches'
+                        ? 'bg-emerald-50 text-emerald-950 font-semibold border border-emerald-200'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <Boxes className="h-4 w-4 text-emerald-700" />
+                    <span>Medicine Batches</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleCompanyNavigation('create')}
+                    className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 font-medium transition-colors ${
+                      activeView === 'manufacturer' && companyTab === 'create'
+                        ? 'bg-emerald-50 text-emerald-950 font-semibold border border-emerald-200'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <PlusCircle className="h-4 w-4 text-emerald-700" />
+                      <span>Generate Unique QRs</span>
+                    </div>
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">
+                      New
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => handleCompanyNavigation('qrcodes')}
+                    className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 font-medium transition-colors ${
+                      activeView === 'manufacturer' && companyTab === 'qrcodes'
+                        ? 'bg-emerald-50 text-emerald-950 font-semibold border border-emerald-200'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <QrCode className="h-4 w-4 text-emerald-700" />
+                    <span>QR Matrix & Print</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleCompanyNavigation('invoices')}
+                    className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 font-medium transition-colors ${
+                      activeView === 'manufacturer' && companyTab === 'invoices'
+                        ? 'bg-emerald-50 text-emerald-950 font-semibold border border-emerald-200'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <FileText className="h-4 w-4 text-blue-700" />
+                    <span>Shipping Invoices</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleCompanyNavigation('profile')}
+                    className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 font-medium transition-colors ${
+                      activeView === 'manufacturer' && companyTab === 'profile'
+                        ? 'bg-emerald-50 text-emerald-950 font-semibold border border-emerald-200'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <Building className="h-4 w-4 text-slate-500" />
+                    <span>Company Profile & Licenses</span>
+                  </button>
+                </div>
               )}
-            </button>
-          </div>
 
-          {/* Group 2: Regulated Supply Chain Roles */}
-          <div className="space-y-1">
-            <div className="px-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Supply Chain Portals
+              {/* PHARMACY ROLE NAVIGATION */}
+              {firebaseUser.role === 'pharmacy' && (
+                <div className="space-y-1">
+                  <div className="px-2.5 flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    <span>Pharmacy Portal</span>
+                    <span className="font-mono text-purple-700">RETAIL</span>
+                  </div>
+
+                  <button
+                    onClick={() => handlePharmacyNavigation('overview')}
+                    className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 font-medium transition-colors ${
+                      activeView === 'pharmacy' && pharmacyTab === 'overview'
+                        ? 'bg-purple-50 text-purple-950 font-semibold border border-purple-200'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <Store className="h-4 w-4 text-purple-700" />
+                    <span>Store Overview</span>
+                  </button>
+
+                  <button
+                    onClick={() => handlePharmacyNavigation('inventory')}
+                    className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 font-medium transition-colors ${
+                      activeView === 'pharmacy' && pharmacyTab === 'inventory'
+                        ? 'bg-purple-50 text-purple-950 font-semibold border border-purple-200'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <Boxes className="h-4 w-4 text-purple-700" />
+                    <span>Shelf Inventory & Stock</span>
+                  </button>
+
+                  <button
+                    onClick={() => handlePharmacyNavigation('invoices')}
+                    className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 font-medium transition-colors ${
+                      activeView === 'pharmacy' && pharmacyTab === 'invoices'
+                        ? 'bg-purple-50 text-purple-950 font-semibold border border-purple-200'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <FileSpreadsheet className="h-4 w-4 text-blue-700" />
+                      <span>Inbound Invoices</span>
+                    </div>
+                    <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">
+                      Confirm
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => handlePharmacyNavigation('verify')}
+                    className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 font-medium transition-colors ${
+                      activeView === 'pharmacy' && pharmacyTab === 'verify'
+                        ? 'bg-purple-50 text-purple-950 font-semibold border border-purple-200'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <ScanLine className="h-4 w-4 text-emerald-700" />
+                    <span>Verify Inbound QRs</span>
+                  </button>
+
+                  <button
+                    onClick={() => handlePharmacyNavigation('profile')}
+                    className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 font-medium transition-colors ${
+                      activeView === 'pharmacy' && pharmacyTab === 'profile'
+                        ? 'bg-purple-50 text-purple-950 font-semibold border border-purple-200'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <CheckCircle2 className="h-4 w-4 text-slate-500" />
+                    <span>Store License (Form 20/21)</span>
+                  </button>
+                </div>
+              )}
+
+              {/* ADMIN ROLE NAVIGATION */}
+              {firebaseUser.role === 'admin' && (
+                <div className="space-y-1">
+                  <div className="px-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Admin Oversight
+                  </div>
+
+                  <button
+                    onClick={() => navigateTo('admin')}
+                    className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 font-medium transition-colors ${
+                      activeView === 'admin'
+                        ? 'bg-amber-50 text-amber-950 font-semibold border border-amber-200'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <ShieldCheck className="h-4 w-4 text-amber-700" />
+                      <span>Admin Console (Me)</span>
+                    </div>
+                    <span className="text-[10px] text-amber-800 font-semibold font-mono">fakemailcloud09</span>
+                  </button>
+
+                  <button
+                    onClick={() => navigateTo('manufacturer')}
+                    className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 font-medium transition-colors ${
+                      activeView === 'manufacturer'
+                        ? 'bg-emerald-50 text-emerald-950 font-semibold border border-emerald-200'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Building2 className="h-4 w-4 text-emerald-700" />
+                      <span>Company Dashboard</span>
+                    </div>
+                    <span className="text-[10px] text-emerald-800 font-semibold font-mono">MFR</span>
+                  </button>
+
+                  <button
+                    onClick={() => navigateTo('pharmacy')}
+                    className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 font-medium transition-colors ${
+                      activeView === 'pharmacy'
+                        ? 'bg-purple-50 text-purple-950 font-semibold border border-purple-200'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Store className="h-4 w-4 text-purple-700" />
+                      <span>Pharmacy Portal</span>
+                    </div>
+                    <span className="text-[10px] text-purple-800 font-semibold font-mono">Store</span>
+                  </button>
+
+                  <button
+                    onClick={() => navigateTo('security_center')}
+                    className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 font-medium transition-colors ${
+                      activeView === 'security_center'
+                        ? 'bg-rose-50 text-rose-950 font-semibold border border-rose-200'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Activity className="h-4 w-4 text-rose-600" />
+                      <span>Impossible Travel Radar</span>
+                    </div>
+                    {activeAlertsCount > 0 && (
+                      <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-bold text-white tabular-nums">
+                        {activeAlertsCount}
+                      </span>
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {/* DISTRIBUTOR ROLE NAVIGATION */}
+              {firebaseUser.role === 'distributor' && (
+                <div className="space-y-1">
+                  <div className="px-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Distributor Hub
+                  </div>
+
+                  <button
+                    onClick={() => navigateTo('distributor')}
+                    className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 font-medium transition-colors ${
+                      activeView === 'distributor'
+                        ? 'bg-blue-50 text-blue-950 font-semibold border border-blue-200'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Truck className="h-4 w-4 text-blue-700" />
+                      <span>Distributor Hub</span>
+                    </div>
+                    <span className="text-[10px] text-blue-800 font-semibold font-mono">Invoices</span>
+                  </button>
+                </div>
+              )}
             </div>
-
-            <button
-              onClick={() => navigateTo('admin', 'admin')}
-              className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 font-medium transition-colors ${
-                activeView === 'admin'
-                  ? 'bg-slate-100 text-slate-900 font-semibold'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <ShieldCheck className="h-4 w-4 text-amber-700" />
-                <span>Admin Console (Me)</span>
+          ) : (
+            /* Logged-out quick test links to test dashboards instantly */
+            <div className="space-y-2 pt-2 border-t border-slate-100">
+              <div className="px-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Test Role Dashboards
               </div>
-              <span className="text-[10px] text-slate-400 font-mono">Govt</span>
-            </button>
-
-            <button
-              onClick={() => navigateTo('manufacturer', 'company')}
-              className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 font-medium transition-colors ${
-                activeView === 'manufacturer'
-                  ? 'bg-emerald-50 text-emerald-900 font-semibold'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <Building2 className="h-4 w-4 text-emerald-700" />
-                <span>Company (MFR)</span>
-              </div>
-              <span className="text-[10px] text-slate-400 font-mono">Baddi</span>
-            </button>
-
-            <button
-              onClick={() => navigateTo('distributor', 'distributor')}
-              className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 font-medium transition-colors ${
-                activeView === 'distributor'
-                  ? 'bg-blue-50 text-blue-900 font-semibold'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <Truck className="h-4 w-4 text-blue-700" />
-                <span>Distributor Hub</span>
-              </div>
-              <span className="text-[10px] text-slate-400 font-mono">Bhiwandi</span>
-            </button>
-
-            <button
-              onClick={() => navigateTo('pharmacy', 'pharmacy')}
-              className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 font-medium transition-colors ${
-                activeView === 'pharmacy'
-                  ? 'bg-purple-50 text-purple-900 font-semibold'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <Store className="h-4 w-4 text-purple-700" />
-                <span>Pharmacy / Chemist</span>
-              </div>
-              <span className="text-[10px] text-slate-400 font-mono">Retail</span>
-            </button>
-          </div>
-
-          {/* Group 3: Network Integrity & Rural Cache */}
-          <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3 space-y-2.5">
-            <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700">
-              <span className="flex items-center gap-1.5">
-                <Layers className="h-3.5 w-3.5 text-emerald-700" />
-                <span>Blockchain Ledger</span>
-              </span>
-              <span className="font-mono text-[10px] tabular-nums text-slate-500">
-                Block #{blocks.length}
-              </span>
-            </div>
-
-            <div className="text-[11px] text-slate-500 flex items-center justify-between">
-              <span>Rural Offline Cache</span>
               <button
-                onClick={toggleOfflineMode}
-                className={`font-semibold transition-colors ${
-                  isOfflineMode ? 'text-amber-700 underline' : 'text-slate-600 hover:text-slate-900'
-                }`}
+                onClick={() => handleQuickDemoSignIn('company')}
+                className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 font-medium text-slate-700 hover:bg-emerald-50 hover:text-emerald-900 transition-colors"
               >
-                {isOfflineMode ? 'Offline Enabled' : 'Online Mode'}
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-3.5 w-3.5 text-emerald-700" />
+                  <span>Company Dashboard</span>
+                </div>
+                <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-100 px-1.5 py-0.5 rounded">
+                  Demo
+                </span>
+              </button>
+
+              <button
+                onClick={() => handleQuickDemoSignIn('pharmacy')}
+                className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 font-medium text-slate-700 hover:bg-purple-50 hover:text-purple-900 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <Store className="h-3.5 w-3.5 text-purple-700" />
+                  <span>Pharmacy Dashboard</span>
+                </div>
+                <span className="text-[10px] text-purple-700 font-semibold bg-purple-100 px-1.5 py-0.5 rounded">
+                  Demo
+                </span>
               </button>
             </div>
+          )}
 
-            {offlineQueueCount > 0 && (
-              <div className="pt-1 border-t border-slate-200/60 flex items-center justify-between text-[11px]">
-                <span className="text-amber-800 font-medium">
-                  {offlineQueueCount} scan(s) pending
+          {/* Group 3: Ledger Status (Shown when logged in) */}
+          {firebaseUser && (
+            <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3 space-y-2 text-[11px]">
+              <div className="flex items-center justify-between font-semibold text-slate-700">
+                <span className="flex items-center gap-1.5">
+                  <Layers className="h-3.5 w-3.5 text-emerald-700" />
+                  <span>Blockchain Ledger</span>
                 </span>
+                <span className="font-mono text-[10px] text-slate-500">
+                  Block #{blocks.length}
+                </span>
+              </div>
+
+              <div className="text-slate-500 flex items-center justify-between">
+                <span>Network State</span>
                 <button
-                  onClick={syncOfflineQueue}
-                  className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 hover:underline"
+                  onClick={toggleOfflineMode}
+                  className={`font-semibold ${
+                    isOfflineMode ? 'text-amber-700 underline' : 'text-slate-600'
+                  }`}
                 >
-                  <RefreshCw className="h-3 w-3" />
-                  <span>Sync Now</span>
+                  {isOfflineMode ? `Offline (${offlineQueueCount})` : 'Online'}
                 </button>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
-        {/* Sidebar Footer: User / Authentication Status */}
+        {/* Sidebar Footer: User Identity & Sign In / Out */}
         <div className="border-t border-slate-200/90 p-3.5 bg-slate-50/50">
           {firebaseUser ? (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="min-w-0 pr-2">
-                  <div className="truncate font-semibold text-xs text-slate-900">
+                  <div className="truncate font-bold text-xs text-slate-900">
                     {firebaseUser.displayName || firebaseUser.email}
                   </div>
                   <div className="truncate text-[10px] text-slate-500">
@@ -262,23 +483,26 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onOpenAuth })
                 </div>
 
                 <button
-                  onClick={() => setFirebaseUser(null)}
-                  title="Sign Out"
+                  onClick={handleSignOut}
+                  title="Sign Out to Public Scanner"
                   className="rounded p-1 text-slate-400 hover:bg-slate-200/60 hover:text-rose-700 transition-colors"
                 >
                   <LogOut className="h-4 w-4" />
                 </button>
               </div>
 
-              <div className="flex items-center gap-1 text-[10px] text-emerald-800 font-medium">
-                <FileCheck2 className="h-3 w-3 text-emerald-700" />
-                <span>Verified Participant Node</span>
-              </div>
+              <button
+                onClick={handleSignOut}
+                className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white py-1.5 text-[11px] font-semibold text-slate-700 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 transition-colors"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                <span>Sign Out</span>
+              </button>
             </div>
           ) : (
             <div className="space-y-2">
               <div className="text-[11px] text-slate-500">
-                Staff & Auditor Portal Sign-In
+                Staff Sign In
               </div>
               <div className="flex gap-2">
                 <button

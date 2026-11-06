@@ -4,8 +4,8 @@
 
 import { ScanLog } from '../types';
 
-const OFFLINE_BATCH_CACHE_KEY = 'meditrust_offline_batch_manifests_v1';
-const OFFLINE_SCAN_QUEUE_KEY = 'meditrust_offline_pending_scans_v1';
+const OFFLINE_BATCH_CACHE_KEY = 'scanrx_offline_batch_manifests_v1';
+const OFFLINE_SCAN_QUEUE_KEY = 'scanrx_offline_pending_scans_v1';
 
 export interface CachedBatchManifest {
   batchNumber: string;
@@ -13,7 +13,7 @@ export interface CachedBatchManifest {
   manufacturer: string;
   merkleRoot: string;
   expiryDate: string;
-  status: 'active' | 'recalled' | 'quarantined';
+  status: 'active' | 'recalled' | 'quarantined' | 'blocked';
   cachedAt: number;
 }
 
