@@ -1094,12 +1094,6 @@ export const useLedgerStore = create<LedgerState>((set, get) => ({
             note: 'CDSCO barcoding & cryptographic Merkle tree sealed.',
           },
         ],
-        lastKnownLocation: {
-          lat: get().currentUser.facilityLocation.lat,
-          lng: get().currentUser.facilityLocation.lng,
-          placeName: get().currentUser.facilityLocation.facilityName,
-          timestamp: Date.now(),
-        },
       });
     }
 
