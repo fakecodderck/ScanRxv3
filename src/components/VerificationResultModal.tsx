@@ -135,8 +135,8 @@ National Drug Grievance Helpline: 1800-11-0163 (CDSCO Toll Free)
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-xs overflow-y-auto">
-      <div className="relative my-8 w-full max-w-2xl rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden text-slate-900 animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-2 sm:p-4 backdrop-blur-xs overflow-y-auto">
+      <div className="relative my-4 sm:my-8 w-full max-w-2xl rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden text-slate-900 animate-in fade-in zoom-in-95 duration-200">
         {/* Modal Header */}
         <div className={`px-6 py-5 border-b ${getHeaderStyle()}`}>
           <div className="flex items-start justify-between gap-4">

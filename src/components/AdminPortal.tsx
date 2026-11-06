@@ -213,8 +213,8 @@ export const AdminPortal: React.FC = () => {
       </div>
 
       {/* Main Tab Bar adhering to Unslop Design */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
-        <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold">
+      <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 border-b border-slate-200 pb-3 overflow-x-auto scrollbar-none whitespace-nowrap">
+        <div className="flex items-center gap-1.5 text-xs font-semibold shrink-0">
           <button
             onClick={() => {
               setActiveTab('directory');

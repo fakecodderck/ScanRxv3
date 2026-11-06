@@ -98,8 +98,8 @@ Note: ${invoice.deliveryConfirmation.note || 'None'}`
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm overflow-y-auto">
-      <div className="relative my-8 w-full max-w-3xl rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden text-slate-900 animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-2 sm:p-4 backdrop-blur-sm overflow-y-auto">
+      <div className="relative my-4 sm:my-8 w-full max-w-3xl rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden text-slate-900 animate-in fade-in zoom-in-95 duration-200">
         {/* Top Action Bar */}
         <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between no-print">
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-700">

@@ -6,7 +6,11 @@ import {
   ShieldCheck,
   Keyboard,
   Sparkles,
-  MapPin
+  MapPin,
+  Locate,
+  Navigation,
+  RefreshCw,
+  CheckCircle2,
 } from 'lucide-react';
 import { useLedgerStore } from '../store/useLedgerStore';
 import { VerificationResultModal } from './VerificationResultModal';
@@ -55,15 +59,64 @@ export const PublicScanner: React.FC<PublicScannerProps> = () => {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [verificationOutput, setVerificationOutput] = useState<any>(null);
   const [userIp, setUserIp] = useState<string>('49.37.152.88');
+  const [locationStatus, setLocationStatus] = useState<'prompt' | 'granted' | 'denied' | 'locating'>('prompt');
+  const [isRealGPSActive, setIsRealGPSActive] = useState<boolean>(false);
 
-  // Interactive scan location state (allows user/tester to test distance from different cities!)
+  // Scan location state (defaults to New Delhi until GPS permission granted)
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; placeName: string }>({
     lat: 28.6139,
     lng: 77.2090,
     placeName: 'Connaught Place Node, New Delhi',
   });
 
-  // Fetch real client public IP address on mount
+  const fetchUserGPSLocation = (isInitial = false) => {
+    if (!('geolocation' in navigator)) {
+      setLocationStatus('denied');
+      return;
+    }
+
+    setLocationStatus('locating');
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        let placeName = `GPS (${lat.toFixed(3)}°, ${lng.toFixed(3)}°)`;
+
+        try {
+          const res = await fetch(
+            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`
+          );
+          if (res.ok) {
+            const data = await res.json();
+            const locality = data.locality || data.city || '';
+            const city = data.city && data.city !== locality ? data.city : '';
+            const state = data.principalSubdivision || '';
+            const parts = [locality, city, state].filter(Boolean);
+            if (parts.length > 0) {
+              placeName = `${parts.join(', ')} (${lat.toFixed(3)}°, ${lng.toFixed(3)}°)`;
+            }
+          }
+        } catch (e) {
+          console.warn('Reverse geocode error:', e);
+        }
+
+        setUserLocation({ lat, lng, placeName });
+        setLocationStatus('granted');
+        setIsRealGPSActive(true);
+      },
+      (err) => {
+        console.warn('Geolocation permission error:', err);
+        setLocationStatus('denied');
+        if (!isInitial) {
+          alert('Location permission was not granted or GPS is disabled. Please enable location permissions in browser settings.');
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
+
+  // Fetch client IP and attempt real GPS location on mount
   useEffect(() => {
     let mounted = true;
     fetch('https://api.ipify.org?format=json')
@@ -74,28 +127,10 @@ export const PublicScanner: React.FC<PublicScannerProps> = () => {
         }
       })
       .catch(() => {
-        // Fallback IP if offline or blocked
         setUserIp('49.37.152.88');
       });
 
-    // Try HTML5 geolocation if available
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          if (mounted) {
-            setUserLocation({
-              lat: pos.coords.latitude,
-              lng: pos.coords.longitude,
-              placeName: `Local Device GPS (${pos.coords.latitude.toFixed(3)}°, ${pos.coords.longitude.toFixed(3)}°)`,
-            });
-          }
-        },
-        () => {
-          // Keep default node
-        },
-        { timeout: 5000 }
-      );
-    }
+    fetchUserGPSLocation(true);
 
     return () => {
       mounted = false;
@@ -309,89 +344,107 @@ export const PublicScanner: React.FC<PublicScannerProps> = () => {
               )}
             </div>
 
-            {/* Manual Input */}
-            <div className="rounded-2xl border border-white/60 bg-white/60 backdrop-blur-md p-4 shadow-sm space-y-3">
-              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                <Keyboard className="h-3.5 w-3.5 text-slate-500" />
-                <span>Or Enter Token / Pack Serial ID</span>
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={manualCode}
-                  onChange={(e) => setManualCode(e.target.value)}
-                  placeholder="e.g. IND-AUG-8821-0002 or IND-DOLO-9921-0001"
-                  className="flex-1 rounded-xl border border-slate-300/80 bg-white/80 px-3 py-2 text-xs font-mono text-slate-900 focus:bg-white focus:border-emerald-600 focus:outline-none shadow-xs"
-                />
-                <button
-                  onClick={() => {
-                    if (manualCode.trim()) handleProcessScan(manualCode.trim());
-                  }}
-                  disabled={!manualCode.trim() || isProcessing}
-                  className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800 disabled:opacity-50 transition-colors shrink-0 shadow-sm"
-                >
-                  Verify
-                </button>
-              </div>
 
-              {/* Quick Sample Pack Buttons */}
-              <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                <span className="text-[11px] font-medium text-slate-500">Test Packs:</span>
-                <button
-                  onClick={() => handleProcessScan('IND-AUG-8821-0002')}
-                  className="px-2.5 py-1 text-[11px] font-mono rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200/80 hover:bg-emerald-100 font-semibold"
-                >
-                  Augmentin #0002
-                </button>
-                <button
-                  onClick={() => handleProcessScan('IND-DOLO-9921-0001')}
-                  className="px-2.5 py-1 text-[11px] font-mono rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200/80 hover:bg-emerald-100 font-semibold"
-                >
-                  Dolo #0001
-                </button>
-              </div>
-            </div>
 
             {/* Live Scan Location & IP Indicator */}
-            <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/50 backdrop-blur-md p-3.5 text-xs text-slate-700 space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 font-bold text-emerald-950">
-                  <MapPin className="h-4 w-4 text-emerald-600" />
-                  <span>Recorded Telemetry (IP & Geolocation)</span>
+            <div className="rounded-2xl border border-emerald-300/80 bg-gradient-to-br from-emerald-50/90 via-white to-emerald-50/40 backdrop-blur-md p-4 text-xs text-slate-700 space-y-3 shadow-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-100 pb-2.5">
+                <div className="flex items-center gap-2 font-bold text-emerald-950">
+                  <div className="relative flex h-3 w-3 items-center justify-center">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-600" />
+                  </div>
+                  <MapPin className="h-4 w-4 text-emerald-700" />
+                  <span>Real Consumer Telemetry & Geolocation</span>
                 </div>
-                <span className="font-mono text-[11px] bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded-md font-semibold">
-                  IP: {userIp}
-                </span>
+                
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-[11px] bg-emerald-100/80 text-emerald-900 border border-emerald-200/80 px-2 py-0.5 rounded-md font-semibold">
+                    IP: {userIp}
+                  </span>
+                  
+                  {isRealGPSActive ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-700 px-2.5 py-0.5 text-[10px] font-bold text-white shadow-xs">
+                      <CheckCircle2 className="h-3 w-3" />
+                      <span>Live Device GPS Active</span>
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => fetchUserGPSLocation(false)}
+                      disabled={locationStatus === 'locating'}
+                      className="inline-flex items-center gap-1 rounded-full bg-emerald-700 px-3 py-1 text-[11px] font-bold text-white hover:bg-emerald-800 transition-colors shadow-xs"
+                    >
+                      <Locate className="h-3 w-3" />
+                      <span>{locationStatus === 'locating' ? 'Locating...' : 'Allow GPS Location'}</span>
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="flex flex-wrap items-center justify-between gap-2 text-[11px]">
-                <span className="text-slate-600">Scan Node: <strong className="text-slate-900">{userLocation.placeName}</strong></span>
-                <div className="flex items-center gap-1">
-                  <span className="text-slate-500 text-[10px]">Simulate Location:</span>
-                  <select
-                    value={userLocation.placeName}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (val.includes('New Delhi')) {
-                        setUserLocation({ lat: 28.6139, lng: 77.2090, placeName: 'Connaught Place Node, New Delhi' });
-                        setUserIp('49.37.152.88');
-                      } else if (val.includes('Mumbai')) {
-                        setUserLocation({ lat: 19.0760, lng: 72.8777, placeName: 'Bandra West Terminal, Mumbai' });
-                        setUserIp('103.21.124.9');
-                      } else if (val.includes('Bengaluru')) {
-                        setUserLocation({ lat: 12.9716, lng: 77.5946, placeName: 'Indiranagar Hub, Bengaluru' });
-                        setUserIp('115.240.90.12');
-                      } else if (val.includes('Chennai')) {
-                        setUserLocation({ lat: 13.0827, lng: 80.2707, placeName: 'Anna Nagar, Chennai' });
-                        setUserIp('117.218.42.5');
-                      }
-                    }}
-                    className="rounded-md border border-emerald-300 bg-white px-2 py-0.5 text-[11px] font-semibold text-emerald-950 focus:outline-none"
-                  >
-                    <option value="Connaught Place Node, New Delhi">New Delhi (IP: 49.37.152.88)</option>
-                    <option value="Bandra West Terminal, Mumbai">Mumbai (IP: 103.21.124.9)</option>
-                    <option value="Indiranagar Hub, Bengaluru">Bengaluru (IP: 115.240.90.12)</option>
-                    <option value="Anna Nagar, Chennai">Chennai (IP: 117.218.42.5)</option>
-                  </select>
+
+              <div className="space-y-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white/90 p-2.5 rounded-xl border border-emerald-200/60 shadow-2xs">
+                  <div className="flex items-start gap-2">
+                    <Navigation className="h-4 w-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wide">
+                        Active Verification Scan Location
+                      </div>
+                      <div className="font-semibold text-slate-900 text-xs mt-0.5">
+                        {userLocation.placeName}
+                      </div>
+                      <div className="text-[10px] font-mono text-slate-500 mt-0.5">
+                        Lat: {userLocation.lat.toFixed(4)}° · Lng: {userLocation.lng.toFixed(4)}°
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => fetchUserGPSLocation(false)}
+                      disabled={locationStatus === 'locating'}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+                      title="Request or update live device GPS coordinates"
+                    >
+                      <RefreshCw className={`h-3 w-3 text-emerald-700 ${locationStatus === 'locating' ? 'animate-spin' : ''}`} />
+                      <span>Update GPS</span>
+                    </button>
+
+                    <div className="relative">
+                      <select
+                        value={isRealGPSActive ? 'CUSTOM' : userLocation.placeName}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === 'GPS') {
+                            fetchUserGPSLocation(false);
+                          } else if (val.includes('New Delhi')) {
+                            setIsRealGPSActive(false);
+                            setUserLocation({ lat: 28.6139, lng: 77.2090, placeName: 'Connaught Place Node, New Delhi' });
+                            setUserIp('49.37.152.88');
+                          } else if (val.includes('Mumbai')) {
+                            setIsRealGPSActive(false);
+                            setUserLocation({ lat: 19.0760, lng: 72.8777, placeName: 'Bandra West Terminal, Mumbai' });
+                            setUserIp('103.21.124.9');
+                          } else if (val.includes('Bengaluru')) {
+                            setIsRealGPSActive(false);
+                            setUserLocation({ lat: 12.9716, lng: 77.5946, placeName: 'Indiranagar Hub, Bengaluru' });
+                            setUserIp('115.240.90.12');
+                          } else if (val.includes('Chennai')) {
+                            setIsRealGPSActive(false);
+                            setUserLocation({ lat: 13.0827, lng: 80.2707, placeName: 'Anna Nagar, Chennai' });
+                            setUserIp('117.218.42.5');
+                          }
+                        }}
+                        className="rounded-lg border border-emerald-300 bg-white px-2 py-1 text-[11px] font-semibold text-emerald-950 focus:outline-none shadow-2xs"
+                      >
+                        {isRealGPSActive && <option value="CUSTOM">📍 Live Real GPS</option>}
+                        <option value="GPS">🎯 Use My Real Location</option>
+                        <option value="Connaught Place Node, New Delhi">Simulate New Delhi</option>
+                        <option value="Bandra West Terminal, Mumbai">Simulate Mumbai</option>
+                        <option value="Indiranagar Hub, Bengaluru">Simulate Bengaluru</option>
+                        <option value="Anna Nagar, Chennai">Simulate Chennai</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

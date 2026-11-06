@@ -14,7 +14,8 @@ import {
   Layers,
   ShieldCheck,
   ExternalLink,
-  Sparkles
+  Sparkles,
+  Trash2
 } from 'lucide-react';
 import { MedicinePack, MedicineBatch } from '../types';
 
@@ -25,6 +26,7 @@ interface MedicineQRCodeModalProps {
   pharmacyHolder?: string;
   onClose: () => void;
   onVerifyInScanner?: (token: string) => void;
+  onDeletePack?: (packId: string) => void;
 }
 
 export const MedicineQRCodeModal: React.FC<MedicineQRCodeModalProps> = ({
@@ -34,6 +36,7 @@ export const MedicineQRCodeModal: React.FC<MedicineQRCodeModalProps> = ({
   pharmacyHolder,
   onClose,
   onVerifyInScanner,
+  onDeletePack,
 }) => {
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [copied, setCopied] = useState<boolean>(false);
@@ -121,10 +124,10 @@ export const MedicineQRCodeModal: React.FC<MedicineQRCodeModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-xs overflow-y-auto">
-      <div className="relative my-8 w-full max-w-xl rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden text-slate-900 animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-2 sm:p-4 backdrop-blur-xs overflow-y-auto">
+      <div className="relative my-4 sm:my-8 w-full max-w-xl rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden text-slate-900 animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/80 px-6 py-4">
+        <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/80 px-4 sm:px-6 py-4">
           <div className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-700 text-white shadow-xs">
               <QrCode className="h-4.5 w-4.5 stroke-[2.2]" />
@@ -298,6 +301,21 @@ export const MedicineQRCodeModal: React.FC<MedicineQRCodeModalProps> = ({
               <Download className="h-3.5 w-3.5" />
               <span>Download PNG</span>
             </button>
+
+            {onDeletePack && (
+              <button
+                onClick={() => {
+                  if (confirm(`Are you sure you want to delete QR code for ${pack.packId}?`)) {
+                    onDeletePack(pack.packId);
+                    onClose();
+                  }
+                }}
+                className="flex items-center gap-1.5 rounded-lg border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition-colors"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>Delete QR</span>
+              </button>
+            )}
 
             <button
               onClick={handlePrint}

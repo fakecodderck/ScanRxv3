@@ -1,6 +1,6 @@
 {
   "name": "ScanRx",
-  "description": "National blockchain pharmaceutical anti-counterfeit & supply chain authenticity platform for India (CDSCO & MoHFW compliant), with instant smartphone camera verification, Merkle proofs, and impossible travel detection.",
+  "description": "Imtiaz Haque.",
   "requestFramePermissions": [
     "camera",
     "geolocation"

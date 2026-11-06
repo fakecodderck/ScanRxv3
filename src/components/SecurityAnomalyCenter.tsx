@@ -46,7 +46,7 @@ export const SecurityAnomalyCenter: React.FC = () => {
         </div>
 
         {/* Tab Selector */}
-        <div className="flex items-center gap-1 rounded-lg bg-slate-100 p-1 border border-slate-200 text-xs font-medium shrink-0">
+        <div className="flex items-center gap-1 rounded-lg bg-slate-100 p-1 border border-slate-200 text-xs font-medium shrink-0 overflow-x-auto max-w-full scrollbar-none whitespace-nowrap">
           <button
             onClick={() => setActiveTab('alerts')}
             className={`rounded-md px-3 py-1.5 transition-colors flex items-center gap-1.5 ${

@@ -21,7 +21,7 @@ import {
   VerificationResultType,
 } from '../types';
 import { AppUserProfile, db, handleFirestoreError, OperationType } from '../lib/firebase';
-import { doc, setDoc, updateDoc, collection, onSnapshot } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, deleteDoc, collection, onSnapshot } from 'firebase/firestore';
 import {
   sha256Sync,
   buildMerkleTree,
@@ -680,6 +680,8 @@ interface LedgerState {
 
   resolveAlert: (alertId: string, note?: string) => void;
   recallBatch: (batchNumber: string, reason: string) => void;
+  deletePack: (packId: string) => void;
+  deletePacksByBatch: (batchNumber: string) => void;
 }
 
 const INITIAL_INVOICES: ShippingInvoice[] = [
@@ -1038,14 +1040,14 @@ export const useLedgerStore = create<LedgerState>((set, get) => ({
     const prefix = data.drugName.replace(/[^a-zA-Z]/g, '').slice(0, 3).toUpperCase() || 'MED';
     const batchNumber = data.batchNumber?.trim() || `LOT-${prefix}-${randomSeq}`;
     const companyOrg = data.companyName?.trim() || get().currentUser.organization;
-    const packCount = Math.min(Math.max(data.totalPacks, 1), 100);
+    const packCount = Math.min(Math.max(data.totalPacks, 1), 1000);
     const newTokens: { token: string; tokenHash: string }[] = [];
     const newPacks: MedicinePack[] = [];
 
     const mfgTimestamp = new Date(data.mfgDate).getTime() || Date.now();
 
     for (let i = 1; i <= packCount; i++) {
-      const serial = `SN-${String(i).padStart(4, '0')}`;
+      const serial = `SN-${String(i).padStart(6, '0')}`;
       const { token, tokenHash } = generateSecureTokenPayload({
         batchNumber,
         serialNumber: serial,
@@ -1058,8 +1060,8 @@ export const useLedgerStore = create<LedgerState>((set, get) => ({
     const merkleResult = buildMerkleTree(newTokens.map((t) => t.tokenHash));
 
     for (let i = 1; i <= packCount; i++) {
-      const serial = `SN-${String(i).padStart(4, '0')}`;
-      const packId = `IND-${prefix}-${batchNumber.replace(/[^a-zA-Z0-9]/g, '').slice(-4)}-${String(i).padStart(4, '0')}`;
+      const serial = `SN-${String(i).padStart(6, '0')}`;
+      const packId = `IND-${prefix}-${batchNumber.replace(/[^a-zA-Z0-9]/g, '').slice(-4)}-${String(i).padStart(6, '0')}`;
       const idx = i - 1;
 
       newPacks.push({
@@ -1709,25 +1711,13 @@ export const useLedgerStore = create<LedgerState>((set, get) => ({
 
     const previousPublicScan = priorPublicScans.length > 0 ? priorPublicScans[0] : null;
 
+    // Evaluate travel velocity only when a prior public consumer scan exists
     if (previousPublicScan) {
       travelEvaluation = evaluateTravelVelocity(
         {
           lat: previousPublicScan.lat,
           lng: previousPublicScan.lng,
           timestamp: previousPublicScan.timestamp,
-        },
-        {
-          lat: userLat,
-          lng: userLng,
-          timestamp,
-        }
-      );
-    } else if (pack?.lastKnownLocation) {
-      travelEvaluation = evaluateTravelVelocity(
-        {
-          lat: pack.lastKnownLocation.lat,
-          lng: pack.lastKnownLocation.lng,
-          timestamp: pack.lastKnownLocation.timestamp,
         },
         {
           lat: userLat,
@@ -1743,7 +1733,7 @@ export const useLedgerStore = create<LedgerState>((set, get) => ({
       '103.21.124.9';
 
     // Check for impossible travel anomaly
-    if (travelEvaluation.isImpossible) {
+    if (travelEvaluation.isImpossible && previousPublicScan) {
       const scanLog: ScanLog = {
         id: `scan-anomaly-${timestamp}`,
         packId: pack?.packId || 'FLAGGED-CLONE',
@@ -1759,23 +1749,13 @@ export const useLedgerStore = create<LedgerState>((set, get) => ({
         velocityKmH: travelEvaluation.velocityKmH,
         distanceKm: travelEvaluation.distanceKm,
         timeDeltaSec: travelEvaluation.timeDeltaSec,
-        previousScan: previousPublicScan
-          ? {
-              lat: previousPublicScan.lat,
-              lng: previousPublicScan.lng,
-              timestamp: previousPublicScan.timestamp,
-              placeName: previousPublicScan.placeName,
-              ipAddress: previousPublicScan.ipAddress || prevIpAddress,
-            }
-          : pack?.lastKnownLocation
-          ? {
-              lat: pack.lastKnownLocation.lat,
-              lng: pack.lastKnownLocation.lng,
-              timestamp: pack.lastKnownLocation.timestamp,
-              placeName: pack.lastKnownLocation.placeName,
-              ipAddress: pack.lastKnownLocation.ipAddress || prevIpAddress,
-            }
-          : undefined,
+        previousScan: {
+          lat: previousPublicScan.lat,
+          lng: previousPublicScan.lng,
+          timestamp: previousPublicScan.timestamp,
+          placeName: previousPublicScan.placeName,
+          ipAddress: previousPublicScan.ipAddress || prevIpAddress,
+        },
         verifiedOffline: isOffline,
       };
 
@@ -1790,28 +1770,15 @@ export const useLedgerStore = create<LedgerState>((set, get) => ({
         details:
           travelEvaluation.reason ||
           `Impossible physical travel velocity (${travelEvaluation.velocityKmH.toLocaleString()} km/h) detected between ${
-            previousPublicScan?.placeName || pack?.lastKnownLocation?.placeName || 'previous scan'
+            previousPublicScan.placeName
           } (${prevIpAddress}) and ${finalPlaceName} (${finalIp}). Duplicate clone strip detected!`,
         locations: [
-          ...(previousPublicScan
-            ? [
-                {
-                  lat: previousPublicScan.lat,
-                  lng: previousPublicScan.lng,
-                  timestamp: previousPublicScan.timestamp,
-                  name: previousPublicScan.placeName,
-                },
-              ]
-            : pack?.lastKnownLocation
-            ? [
-                {
-                  lat: pack.lastKnownLocation.lat,
-                  lng: pack.lastKnownLocation.lng,
-                  timestamp: pack.lastKnownLocation.timestamp,
-                  name: pack.lastKnownLocation.placeName,
-                },
-              ]
-            : []),
+          {
+            lat: previousPublicScan.lat,
+            lng: previousPublicScan.lng,
+            timestamp: previousPublicScan.timestamp,
+            name: previousPublicScan.placeName,
+          },
           {
             lat: userLat,
             lng: userLng,
@@ -1853,22 +1820,14 @@ export const useLedgerStore = create<LedgerState>((set, get) => ({
     }
 
     // 6. Repeat Public Scan Check (§9.1 & 7.3: ALREADY_SCANNED)
-    if (priorPublicScans.length > 0 || (pack?.lastKnownLocation && pack.lastKnownLocation.timestamp < timestamp - 1000)) {
-      const prevScanLocation = previousPublicScan
-        ? {
-            lat: previousPublicScan.lat,
-            lng: previousPublicScan.lng,
-            timestamp: previousPublicScan.timestamp,
-            placeName: previousPublicScan.placeName,
-            ipAddress: previousPublicScan.ipAddress || prevIpAddress,
-          }
-        : {
-            lat: pack!.lastKnownLocation!.lat,
-            lng: pack!.lastKnownLocation!.lng,
-            timestamp: pack!.lastKnownLocation!.timestamp,
-            placeName: pack!.lastKnownLocation!.placeName,
-            ipAddress: pack!.lastKnownLocation!.ipAddress || prevIpAddress,
-          };
+    if (priorPublicScans.length > 0 && previousPublicScan) {
+      const prevScanLocation = {
+        lat: previousPublicScan.lat,
+        lng: previousPublicScan.lng,
+        timestamp: previousPublicScan.timestamp,
+        placeName: previousPublicScan.placeName,
+        ipAddress: previousPublicScan.ipAddress || prevIpAddress,
+      };
 
       const alreadyScannedLog: ScanLog = {
         id: `scan-already-${timestamp}`,
@@ -1886,7 +1845,7 @@ export const useLedgerStore = create<LedgerState>((set, get) => ({
         distanceKm: travelEvaluation.distanceKm,
         timeDeltaSec: travelEvaluation.timeDeltaSec,
         previousScan: prevScanLocation,
-        priorPublicScanCount: priorPublicScans.length > 0 ? priorPublicScans.length : 1,
+        priorPublicScanCount: priorPublicScans.length,
         verifiedOffline: isOffline,
       };
 
@@ -1907,7 +1866,7 @@ export const useLedgerStore = create<LedgerState>((set, get) => ({
         batch,
         pack,
         scanLog: alreadyScannedLog,
-        priorPublicScanCount: priorPublicScans.length > 0 ? priorPublicScans.length : 1,
+        priorPublicScanCount: priorPublicScans.length,
         isOfflineVerified: isOffline,
       };
     }
@@ -2017,5 +1976,26 @@ export const useLedgerStore = create<LedgerState>((set, get) => ({
         securityAlerts: [alert, ...s.securityAlerts],
       };
     });
+  },
+
+  deletePack: (packId) => {
+    deleteDoc(doc(db, 'packs', packId)).catch((err) =>
+      handleFirestoreError(err, OperationType.DELETE, `packs/${packId}`)
+    );
+    set((state) => ({
+      packs: state.packs.filter((p) => p.packId !== packId),
+    }));
+  },
+
+  deletePacksByBatch: (batchNumber) => {
+    const packsToDelete = get().packs.filter((p) => p.batchNumber === batchNumber);
+    packsToDelete.forEach((p) => {
+      deleteDoc(doc(db, 'packs', p.packId)).catch((err) =>
+        handleFirestoreError(err, OperationType.DELETE, `packs/${p.packId}`)
+      );
+    });
+    set((state) => ({
+      packs: state.packs.filter((p) => p.batchNumber !== batchNumber),
+    }));
   },
 }));
