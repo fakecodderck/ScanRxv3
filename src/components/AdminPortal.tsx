@@ -26,9 +26,9 @@ import {
   Phone,
   RefreshCw,
   Clock,
-  Layers,
   ChevronRight,
-  UserCheck
+  UserCheck,
+  Trash2
 } from 'lucide-react';
 import { useLedgerStore } from '../store/useLedgerStore';
 import { MedicineBatch, MedicinePack, RegisteredOrganization, SecurityAlert, ShippingInvoice } from '../types';
@@ -48,6 +48,7 @@ export const AdminPortal: React.FC = () => {
     suspendOrganization,
     reactivateOrganization,
     recallBatch,
+    deleteBatch,
     resolveAlert,
     firebaseUser,
     setActiveView,
@@ -964,6 +965,19 @@ export const AdminPortal: React.FC = () => {
                     ) : (
                       <span className="text-xs font-semibold text-rose-700">Recalled under CDSCO order</span>
                     )}
+
+                    <button
+                      onClick={() => {
+                        if (confirm(`Are you sure you want to delete Batch ${batch.batchNumber} and all its ${batch.totalPacks} QR codes from the national ledger?`)) {
+                          deleteBatch(batch.batchNumber);
+                        }
+                      }}
+                      className="inline-flex items-center gap-1 rounded-lg border border-rose-300 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100"
+                      title="Delete Batch & All QRs"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      <span>Delete</span>
+                    </button>
                   </div>
                 </div>
 

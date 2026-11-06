@@ -680,6 +680,7 @@ interface LedgerState {
 
   resolveAlert: (alertId: string, note?: string) => void;
   recallBatch: (batchNumber: string, reason: string) => void;
+  deleteBatch: (batchNumber: string) => void;
   deletePack: (packId: string) => void;
   deletePacksByBatch: (batchNumber: string) => void;
 }
@@ -1976,6 +1977,22 @@ export const useLedgerStore = create<LedgerState>((set, get) => ({
         securityAlerts: [alert, ...s.securityAlerts],
       };
     });
+  },
+
+  deleteBatch: (batchNumber) => {
+    deleteDoc(doc(db, 'batches', batchNumber)).catch((err) =>
+      handleFirestoreError(err, OperationType.DELETE, `batches/${batchNumber}`)
+    );
+    const packsToDelete = get().packs.filter((p) => p.batchNumber === batchNumber);
+    packsToDelete.forEach((p) => {
+      deleteDoc(doc(db, 'packs', p.packId)).catch((err) =>
+        handleFirestoreError(err, OperationType.DELETE, `packs/${p.packId}`)
+      );
+    });
+    set((state) => ({
+      batches: state.batches.filter((b) => b.batchNumber !== batchNumber),
+      packs: state.packs.filter((p) => p.batchNumber !== batchNumber),
+    }));
   },
 
   deletePack: (packId) => {

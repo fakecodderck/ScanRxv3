@@ -52,6 +52,7 @@ export const ManufacturerPortal: React.FC = () => {
     createShippingInvoice,
     recallBatch,
     deletePack,
+    deleteBatch,
     currentUser,
     organizations,
     companyTab,
@@ -532,13 +533,27 @@ export const ManufacturerPortal: React.FC = () => {
 
                   <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600 font-mono">
                     <span>{b.totalPacks} Unique QRs</span>
-                    <button
-                      onClick={() => handleOpenQRModal(b)}
-                      className="font-bold text-emerald-700 hover:underline flex items-center gap-1 font-sans"
-                    >
-                      <QrCode className="h-3.5 w-3.5" />
-                      <span>Print QRs</span>
-                    </button>
+                    <div className="flex items-center gap-2.5 font-sans">
+                      <button
+                        onClick={() => handleOpenQRModal(b)}
+                        className="font-bold text-emerald-700 hover:underline flex items-center gap-1"
+                      >
+                        <QrCode className="h-3.5 w-3.5" />
+                        <span>Print QRs</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (confirm(`Are you sure you want to delete Batch ${b.batchNumber} and all its associated QR codes?`)) {
+                            deleteBatch(b.batchNumber);
+                          }
+                        }}
+                        className="font-bold text-rose-600 hover:underline flex items-center gap-1"
+                        title="Delete Batch and all associated QRs"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span>Delete</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -667,6 +682,19 @@ export const ManufacturerPortal: React.FC = () => {
                               <span>Recall</span>
                             </button>
                           )}
+
+                          <button
+                            onClick={() => {
+                              if (confirm(`Are you sure you want to delete Batch ${batch.batchNumber} and all its associated ${batch.totalPacks} QR codes?`)) {
+                                deleteBatch(batch.batchNumber);
+                              }
+                            }}
+                            title="Delete Batch & All QRs"
+                            className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-100 transition-colors"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                            <span>Delete</span>
+                          </button>
                         </td>
                       </tr>
                     ))
