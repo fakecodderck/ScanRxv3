@@ -1,0 +1,20 @@
+{
+	"appId": "com.scanrx.app",
+	"appName": "ScanRx",
+	"webDir": "dist",
+	"server": {
+		"androidScheme": "https"
+	},
+	"plugins": {
+		"Camera": {
+			"permissions": [
+				"camera"
+			]
+		},
+		"Geolocation": {
+			"permissions": [
+				"location"
+			]
+		}
+	}
+}
